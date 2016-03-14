@@ -21,7 +21,7 @@ import java.util.logging.Logger;
 public class Client extends MotionComponent implements Runnable{
      
     private final int DEFAULTPORT = 8880;
-    private final String DEBUGSERVER = "10.0.97.20";
+    private final String DEBUGSERVER = "localhost";
     
     Socket Client;
     int Port;
