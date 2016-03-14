@@ -1,7 +1,9 @@
 
 package headballv2;
 
+import java.awt.AlphaComposite;
 import java.awt.Color;
+import java.awt.Composite;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GradientPaint;
@@ -20,10 +22,17 @@ public class RenderComponent extends JPanel implements Runnable{
     
     private final Dimension SCREEN_SIZE = new Dimension((int)Toolkit.getDefaultToolkit().getScreenSize().getWidth(), (int)Toolkit.getDefaultToolkit().getScreenSize().getHeight());
     private final int DELAY = 8;
+    private final boolean SERVER_MODE = true;
+    
     private Thread RenderThread;
     private MotionComponent Motion;
+    
+    Graphics2D g2;
     private long FPS;
     private boolean debugFPS;
+    private boolean isReady;
+    private double Angle;
+    private String Status;
 
     public RenderComponent(){
         initRenderComponent();
@@ -31,11 +40,12 @@ public class RenderComponent extends JPanel implements Runnable{
     
     private void initRenderComponent(){
         //this.setBackground(Color.WHITE);
-        System.out.println("init_rendercomponent");
+        Status = "init_rendercomponent";
         this.setDoubleBuffered(true);
         Motion = new MotionComponent();
         debugFPS = true;
-        System.out.println("done");
+        isReady = false;
+        Status = "Loading...";
         //CHARGED GRAPHICS
     }
 
@@ -51,33 +61,60 @@ public class RenderComponent extends JPanel implements Runnable{
     @Override
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
-        Graphics2D g2 = (Graphics2D) g;
+        g2 = (Graphics2D) g;
         
         //FUNZIONI DISEGNO
         /*ANTIALIAS ON*/
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         
-        drawBackground(g2);
+        drawBackground();
         
         if(debugFPS)
             g2.drawString("FPS: " + FPS, 20, 20);
         
-        drawBall(g2);
+        if(isReady){
+            drawBall();
 
-        g2.drawImage(Motion.getPG(0).getTile().getSprite(), null, (int)Motion.getPG(0).getX(), (int)Motion.getPG(0).getY());
+            g2.drawImage(Motion.getPG(0).getTile().getSprite(), null, (int)Motion.getPG(0).getX(), (int)Motion.getPG(0).getY());
+            g2.drawImage(Motion.getPG(0).getTile().getSprite(), null, (int)Motion.getPG(1).getX(), (int)Motion.getPG(1).getY()); //PG2 per adesso stessa sprite (da fixare)
+            g2.drawImage(Motion.getGUI().getSprite(), 0, 0, SCREEN_SIZE.width, SCREEN_SIZE.height, null); //Doors
 
-        g2.drawImage(Motion.getGUI().getSprite(), 0, 0, SCREEN_SIZE.width, SCREEN_SIZE.height, null); //Doors
-
-        drawScore(g2);
-        
+            drawScore();
+        }
+        else{
+            drawSplash();
+        }
         //g2.drawLine(683, 0, 683, 768);
 
         /*DEALLOCO RISORSE GRAFICHE*/
         g2.dispose();
     }
     
-    public void drawBall(Graphics2D g2){
+    public void drawSplash(){
+        Composite Original = g2.getComposite();
+        int type = AlphaComposite.SRC_OVER;
+        Angle += 1.5;
+        g2.setComposite(AlphaComposite.getInstance(type, 0.80f));
+        g2.setPaint(Color.BLACK);
+        g2.fillRect(0, 0, SCREEN_SIZE.width, SCREEN_SIZE.height);
+        g2.setComposite(Original);
+        g2.rotate(Math.toRadians(Angle), SCREEN_SIZE.width/2, SCREEN_SIZE.height/2);
+        g2.drawImage(Motion.getSplashItem(0).getSprite(), null, SCREEN_SIZE.width/2 - 75, SCREEN_SIZE.height/2 - 75);
+        g2.rotate(Math.toRadians(-Angle), SCREEN_SIZE.width/2, SCREEN_SIZE.height/2);
+        g2.rotate(Math.toRadians(-Angle), SCREEN_SIZE.width/2, SCREEN_SIZE.height/2);
+        g2.drawImage(Motion.getSplashItem(1).getSprite(), null, SCREEN_SIZE.width/2 - 75, SCREEN_SIZE.height/2 - 75);
+        g2.rotate(Math.toRadians(Angle), SCREEN_SIZE.width/2, SCREEN_SIZE.height/2);
+        Font currentFont = g2.getFont();
+        Font thisFont = currentFont.deriveFont(Font.ITALIC, currentFont.getSize() * 1.5F);
+        g2.setFont(thisFont);
+        g2.setPaint(Color.WHITE);
+        g2.drawString(Status, SCREEN_SIZE.width/2 - 4*Status.length(), SCREEN_SIZE.height/2 + 100);
+        g2.setFont(currentFont);
+        
+    }
+    
+    public void drawBall(){
         /*SEZIONE PALLA (CON ROTAZIONE)*/
         AffineTransform Original = g2.getTransform();
         
@@ -88,7 +125,7 @@ public class RenderComponent extends JPanel implements Runnable{
         g2.setTransform(Original); //Ripristino la transform originale
     }
     
-    public void drawScore(Graphics2D g2){
+    public void drawScore(){
         /*SEZIONE PUNTEGGIO*/
         Font currentFont = g2.getFont();
         Font thisFont = currentFont.deriveFont(Font.BOLD, currentFont.getSize() * 5F);
@@ -96,13 +133,13 @@ public class RenderComponent extends JPanel implements Runnable{
         g2.setFont(thisFont);
         g2.setPaint(new GradientPaint(0 , 0, Color.ORANGE, 0, 120, Color.RED));
         //g2.drawString(TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis())%100 + " ", SCREEN_SIZE.width/2 - 44, 120);
-        g2.drawString(Motion.getPOINTS(0) + " ", SCREEN_SIZE.width/2 - 150, 100);
-        g2.drawString(Motion.getPOINTS(1) + " ", SCREEN_SIZE.width/2 + 100, 100);
+        g2.drawString(Motion.getPG(0).getPoints() + " ", SCREEN_SIZE.width/2 - 150, 100);
+        g2.drawString(Motion.getPG(1).getPoints() + " ", SCREEN_SIZE.width/2 + 100, 100);
         g2.setPaint(currentPaint);
         g2.setFont(currentFont);
     }
     
-    public void drawBackground(Graphics2D g2){
+    public void drawBackground(){
         g2.drawImage(Motion.getStadium().getSprite(), 0, 0, SCREEN_SIZE.width, SCREEN_SIZE.height, null); //BackgroundImage
     }
 
@@ -111,6 +148,18 @@ public class RenderComponent extends JPanel implements Runnable{
         long beforeTime, timeDiff, sleep;
         long frameTimer = 0;
         int frames = 0;
+        
+        Motion.initMultiplayer(SERVER_MODE);
+        
+        while(!isReady){
+               
+            this.Status = Motion.getMultiState();
+            
+            repaint();
+            
+            if(Motion.isReadEnter() && this.Status.equals("READY")) //RIMUOVI LE UNDERSCORE!!!! (DEBUG)
+                isReady = true;
+        }
 
         beforeTime = System.currentTimeMillis();
         
@@ -147,5 +196,18 @@ public class RenderComponent extends JPanel implements Runnable{
     public MotionComponent getMotionComponent(){
         return this.Motion;
     }
+
+    public boolean isReady() {
+        return isReady;
+    }
+
+    public void setReady(boolean isReady) {
+        this.isReady = isReady;
+    }
+    
+    public long getFPS(){
+        return this.FPS;
+    }
+    
 }
 

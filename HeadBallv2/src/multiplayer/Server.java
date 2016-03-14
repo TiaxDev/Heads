@@ -1,6 +1,8 @@
 
 package multiplayer;
 
+import headballv2.MotionComponent;
+import headballv2.Player;
 import java.io.*;
 import java.net.*;
 import java.util.logging.Level;
@@ -8,19 +10,24 @@ import java.util.logging.Logger;
 
 /*
  @author Tiax
- DA IMPLEMENTARE
+ 
 */
-public class Server implements Runnable{
+public class Server extends MotionComponent implements Runnable{
     
     private final int DEFAULTPORT = 8880;
     
     ServerSocket Server;
     Socket Client;
     int Port;
+    String State = " ";
     
     DataInputStream dataIn;
     DataOutputStream dataOut;
+    ObjectInputStream objIn;
+    ObjectOutputStream objOut;
     
+    //LOCALI
+    Player PG = null;
     
     public Server(){
         this.Server = null;
@@ -41,79 +48,76 @@ public class Server implements Runnable{
             Client = Server.accept();
             
             System.out.println("[SERVER] Connessione stabilita con client: " + Client.getInetAddress());
+            this.State = "Connessione stabilita!";
             dataIn = new DataInputStream(Client.getInputStream());
             dataOut = new DataOutputStream(Client.getOutputStream());
+            objOut = new ObjectOutputStream(Client.getOutputStream());
+            objIn = new ObjectInputStream(Client.getInputStream());
         } catch (IOException ex) {
             Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
         }
         
         return Client;
     }
+
+    public String getState() {
+        return State;
+    }
+
+    public void setState(String State) {
+        this.State = State;
+    }
     
     //METODI GENERICI PER TEST CONNESSIONE//
-    public String getData(){
-        return dataIn.toString();
-    }
     
-    public void putData(String Generic){
-        try {
-            dataOut.writeBytes(Generic);
-        } catch (IOException ex) {
-            Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
-        }
-    }
-    
-    public void stopServer(){
+    private void stopServer(){
         try {
             this.Server.close();
+            this.dataIn.close();
+            this.dataOut.close();
+            this.objIn.close();
+            this.objOut.close();
         } catch (IOException ex) {
             Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
+    public Player getSocketPG() {
+        return this.PG;
+    }
+    
+    public ObjectOutputStream getObjOut() {
+        return objOut;
+    }
+
     @Override
     public void run() {
-        BufferedReader r = new BufferedReader(new InputStreamReader(System.in));
+        initServer(this.DEFAULTPORT);
+        String sData = " ";
+        //LOCALI
+        PG = new Player();
+        
+        this.State = "Invio Sinch...";
         try {
-            System.out.println("[SERVER]>");
-            this.initServer(Port);
-            for(int i = 0; i < 10; i++){
-                this.dataOut.writeUTF(String.valueOf(i));
-                this.dataOut.flush();
-                //System.err.println("[SERVER]> Pause...");
-                //this.dataOut.writeUTF("PAUSE_2000");
-                Thread.sleep(1000);
-                
+            this.dataOut.writeUTF("_SYN_");
+            this.dataOut.flush();
+            
+            while(!sData.equals("_SYN_")){
+                sData = this.dataIn.readUTF();
             }
-        } catch (IOException | InterruptedException ex) {
+            
+            //READY
+            this.State = "READY";
+            while(Client.isConnected()){
+                //Get risorse dal socket
+                PG.readObj(objIn);
+            }
+            
+            this.State = "Client disconnesso";
+            stopServer();
+                
+        } catch (IOException ex) {
             Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
         }
-        
-//        try {
-//            this.dataOut.writeUTF("END");
-//        } catch (IOException ex) {
-//            Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
-//        }
-        
-        boolean end = false;
-        
-        while(!end){
-            try {
-                System.out.println("[SERVER]>");
-                String s = r.readLine();
-                if(s.equals("end")){
-                    end = true;
-                    this.dataOut.writeUTF("END");
-                }
-                else
-                    this.dataOut.writeUTF(s);
-            } catch (IOException ex) {
-                Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
-        
-        
-        System.err.println("[SERVER]> Closed Connection");
-        this.stopServer();
     }
 }

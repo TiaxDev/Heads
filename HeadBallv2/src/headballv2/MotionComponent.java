@@ -6,6 +6,7 @@ import java.awt.event.KeyListener;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
+import multiplayer.*;
 
 /*
  @author Tiax
@@ -24,13 +25,19 @@ public class MotionComponent implements KeyListener{
     /*SPRITES BG*/
     Sprite Stadium;
     Sprite GUI;
+    Sprite[] Splash;
     
     /*ISTANZE OGGETTI*/
-    Ball b;
-    ArrayList <Player> p = new ArrayList <>();
-    int[] POINTS = new int[2];
-    int i, t = 0;
-    boolean Goal = false;
+    Thread th;
+    private Ball b;
+    private ArrayList <Player> p = new ArrayList <>();
+    private int i, t = 0;
+    private boolean Goal = false;
+    private boolean readEnter = false;
+    private boolean isServer = false;
+    private String multiState = " ";
+    private Client Client;
+    private Server Server;
     
     public MotionComponent(){
         initComponents();
@@ -43,9 +50,38 @@ public class MotionComponent implements KeyListener{
         this.p.add(new Player());
         this.Stadium = new Sprite("stadium" + Integer.toString((int)Math.random() & 1) + ".png");
         this.GUI = new Sprite("doors.png");
-        POINTS[0] = 0;
-        POINTS[1] = 0;
+        this.Splash = new Sprite[2];
+        this.Splash[0] = new Sprite("splash.png");
+        this.Splash[1] = new Sprite("splash2.png");
         System.out.println("done");
+    }
+
+    //TRUE: SERVER_MODE ON
+    public void initMultiplayer(boolean Mode){
+        if(Mode){
+            /*SERVERMODE*/
+            this.multiState = "Aspetto connessioni...";
+            this.Server = new Server();
+            isServer = true;
+            Server.setState(multiState);
+            th = new Thread(this.Server, "Server");
+            th.start();
+        }
+        else{
+            /*CLIENTMODE*/
+            this.multiState = "Ricerca server...";
+            this.Client = new Client();
+            Client.setState(multiState);
+            th = new Thread(this.Client, "Client");
+            th.start();
+        }
+    }
+    
+    public Sprite getSplashItem(int Index){
+        if(Index <= Splash.length)
+            return Splash[Index];
+        else
+            return Splash[0];
     }
 
     public Sprite getStadium() {
@@ -57,21 +93,38 @@ public class MotionComponent implements KeyListener{
     }
     
     public Ball getBall(){
-        return b;
+        if(isServer)
+            return b;
+        else
+            return Client.getSocketBall();
+    }
+
+    public String getMultiState() {
+        if(isServer){
+            return Server.getState();
+        }
+        else{
+            return Client.getState();
+        }
+    }
+
+    public void setMultiState(String multiState) {
+        this.multiState = multiState;
     }
     
     public void BallMovement(){
         b.moveBall(p);
-
+        if(isServer)
+            b.writeObj(Server.getObjOut());
         /*TEMP PER GOAL*/
         if(!Goal){
             if((b.getX() + b.getW() < b.Traversa1.x + b.Traversa1.width) && (b.getY() > b.Traversa1.getMaxY())){ //Goal Destra
                 Goal = true;
-                POINTS[0] ++;
+                p.get(0).setPoints(p.get(0).getPoints() + 1);
             }
             else if((b.getX() > b.Traversa2.x) && (b.getY() > b.Traversa2.getMaxY())){ //Goal sinistra
                 Goal = true;
-                POINTS[1] ++;
+                p.get(1).setPoints(p.get(1).getPoints() + 1);
             }
         }
         else{
@@ -84,20 +137,38 @@ public class MotionComponent implements KeyListener{
         }
     }
     
-    //Implementare PG2
-    public Player getPG(int i){
-        if(i < 1)
-            return p.get(i);
-        return null;
+    public Player getPG(int Index){
+        if(Index == 0)
+            return p.get(Index);
+        
+        if(isServer){
+            p.set(Index, Server.getSocketPG());
+            return p.get(Index);
+        }  
+        else{
+            p.set(Index, Client.getSocketPG());
+            return p.get(Index);
+        }
 
+    }
+    
+    public void setPg(int Index, Player p1){
+        if(Index == 0)
+            this.p.set(Index, p1);
+        if(Index == 1)
+            this.p.set(Index, p1);
     }
 
     public void PGMovement(){
         p.get(0).movePlayer();
+        if(isServer)
+            p.get(0).writeObj(Server.getObjOut());
+        else
+            p.get(0).writeObj(Client.getObjOut());
     }
-
-    public int getPOINTS(int i) {
-        return POINTS[i];
+    
+    public boolean isReadEnter() {
+        return readEnter;
     }
     
     @Override
@@ -123,9 +194,12 @@ public class MotionComponent implements KeyListener{
     }
     
     public void keyJustMove(){
+        if(Pulsanti.contains(KeyEvent.VK_ENTER))
+            readEnter = true;
+            
         if(Pulsanti.contains(KeyEvent.VK_UP) && !(p.get(0).isJump())){
-                p.get(0).setJump(true);
-                p.get(0).setVy(-8);
+            p.get(0).setJump(true);
+            p.get(0).setVy(-8);
         }
         
         if(Pulsanti.contains(KeyEvent.VK_SHIFT)){

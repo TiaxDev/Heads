@@ -3,11 +3,16 @@ package headballv2;
 
 import java.awt.Dimension;
 import java.awt.Toolkit;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /*
  @author Tiax
 */
-public class Player {
+public class Player{
     
     private final Dimension SCREEN_SIZE = Toolkit.getDefaultToolkit().getScreenSize();
     private final double ATTRICT = 20;
@@ -23,6 +28,7 @@ public class Player {
     private double Gravity;
     private boolean Jump;
     private Sprite Sprite;
+    private int Points;
 
     public Player() {
         this.x = 800;
@@ -35,6 +41,7 @@ public class Player {
         this.Gravity = 0.2;
         this.Jump = false;
         this.Sprite = new Sprite("til1.png", 0);
+        this.Points = 0;
     }
     
     public double getCenterX(){
@@ -112,6 +119,14 @@ public class Player {
     public Sprite getTile(){
         return this.Sprite;
     }
+
+    public int getPoints() {
+        return Points;
+    }
+
+    public void setPoints(int Points) {
+        this.Points = Points;
+    }
     
     public void incX(double Fact){
         this.Vx += Fact;
@@ -157,6 +172,39 @@ public class Player {
                     b.setVy(5);
                 b.setVy(-(15 - (xDist/10))); //Più la palla è lontana dal giocatore più il tiro sarà basso
             }
+        }
+    }
+    
+    public void writeObj(ObjectOutputStream Stream){
+        try {
+            Stream.writeDouble(this.x);
+            Stream.writeDouble(this.y);
+            Stream.writeDouble(this.h);
+            Stream.writeDouble(this.w);
+            Stream.writeDouble(this.Vx);
+            Stream.writeDouble(this.Vy);
+            Stream.writeDouble(this.Gravity);
+            Stream.writeDouble(this.Mass);
+            Stream.writeInt(this.Points);
+            Stream.flush();
+        } catch (IOException ex) {
+            Logger.getLogger(Ball.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    
+    public void readObj(ObjectInputStream Stream){
+        try {
+            this.x = Stream.readDouble();
+            this.y = Stream.readDouble();
+            this.h = Stream.readDouble();
+            this.w = Stream.readDouble();
+            this.Vx = Stream.readDouble();
+            this.Vy = Stream.readDouble();
+            this.Gravity = Stream.readDouble();
+            this.Mass = Stream.readDouble();
+            this.Points = Stream.readInt();
+        } catch (IOException ex) {
+            Logger.getLogger(Ball.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 }

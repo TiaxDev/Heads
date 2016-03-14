@@ -4,12 +4,17 @@ package headballv2;
 import java.awt.Dimension;
 import java.awt.Toolkit;
 import java.awt.geom.Rectangle2D;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.ArrayList;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /*
  @author Tiax
 */
-public class Ball {
+public class Ball{
     
     private final Dimension SCREEN_SIZE = Toolkit.getDefaultToolkit().getScreenSize();
     public final Rectangle2D.Double Traversa1 = new Rectangle2D.Double(0, 390, 90, 15);
@@ -206,5 +211,37 @@ public class Ball {
             }
         }
     }
-
+    
+    public void writeObj(ObjectOutputStream Stream){
+        try {
+            Stream.writeDouble(this.x);
+            Stream.writeDouble(this.y);
+            Stream.writeDouble(this.h);
+            Stream.writeDouble(this.w);
+            Stream.writeDouble(this.Vx);
+            Stream.writeDouble(this.Vy);
+            Stream.writeDouble(this.Angle);
+            Stream.writeDouble(this.Gravity);
+            Stream.writeDouble(this.Mass);
+            Stream.flush();
+        } catch (IOException ex) {
+            Logger.getLogger(Ball.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    
+    public void readObj(ObjectInputStream Stream){
+        try {
+            this.x = Stream.readDouble();
+            this.y = Stream.readDouble();
+            this.h = Stream.readDouble();
+            this.w = Stream.readDouble();
+            this.Vx = Stream.readDouble();
+            this.Vy = Stream.readDouble();
+            this.Angle = Stream.readDouble();
+            this.Gravity = Stream.readDouble();
+            this.Mass = Stream.readDouble();
+        } catch (IOException ex) {
+            Logger.getLogger(Ball.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
 }
